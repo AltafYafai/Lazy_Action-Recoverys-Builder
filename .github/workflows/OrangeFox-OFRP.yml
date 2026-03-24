@@ -93,6 +93,21 @@ jobs:
         cd ${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
+        - name: Clone Device Tree
+      run: |
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        git clone ${{ github.event.inputs.DEVICE_TREE }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
+        cd ${{ github.event.inputs.DEVICE_PATH }}
+        echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+    # --- NEW STEP ADDED HERE ---
+    - name: Sync Missing Dependencies (Guava)
+      if: github.event.inputs.MANIFEST_BRANCH == '14.1'
+      run: |
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+        git clone https://android.googlesource.com/platform/external/guava external/guava
+    # ---------------------------
+
     - name: Check Manifest Branch
       uses: haya14busa/action-cond@v1
       id: fox_branch
@@ -107,7 +122,11 @@ jobs:
         set +e
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        WITHOUT_CHECKBUILD=true
+        
+        # --- NEW VARIABLE ADDED HERE ---
+        export WITHOUT_CHECKBUILD=true
+        # -------------------------------
+        
         set -e
         ${{ steps.fox_branch.outputs.value }}
 
