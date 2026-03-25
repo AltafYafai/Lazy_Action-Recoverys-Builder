@@ -60,6 +60,7 @@ jobs:
     # ✅ Build
     - name: Build Recovery
       run: |
+        set -x
         cd ~/fox_12.1
         export USE_CCACHE=1
         export CCACHE_EXEC=$(which ccache)
