@@ -52,7 +52,7 @@ jobs:
     - name: Clone device tree
       run: |
         cd ~/fox_12.1
-        git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b TWRP device/xiaomi/sky
+        git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b fox12.1 device/xiaomi/sky
 
     # ✅ Build
     - name: Build Recovery
