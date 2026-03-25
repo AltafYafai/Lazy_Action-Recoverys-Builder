@@ -123,31 +123,43 @@ jobs:
       run: |
         echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
 
-    - name: Check if Recovery Exists
+    - name: Diagnostic - List All Output Files
       run: |
-        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        if ls out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img 1> /dev/null 2>&1; then
-            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
-            echo "MD5_IMG=$(md5sum out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        echo "=== Listing all files in the output directory ==="
+        find ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ -maxdepth 2 -not -path '*/.*'
+        
+    - name: Prepare Artifacts for Upload
+      run: |
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/
+        mkdir -p ${GITHUB_WORKSPACE}/artifacts/
+        # Copy anything that looks like a recovery or boot image
+        cp recovery.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
+        cp boot.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
+        cp vendor_boot.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
+        cp OrangeFox*.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
+        cp OrangeFox*.zip ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
+        
+        # Check if we actually found anything
+        if [ "$(ls -A ${GITHUB_WORKSPACE}/artifacts/)" ]; then
+          echo "FILES_FOUND=true" >> $GITHUB_ENV
         else
-            echo "Recovery img not found."
-        fi
-        if ls out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.zip 1> /dev/null 2>&1; then
-            echo "CHECK_ZIP_IS_OK=true" >> $GITHUB_ENV
-            echo "MD5_ZIP=$(md5sum out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
-        else
-            echo "Recovery zip not found."
+          echo "FILES_FOUND=false" >> $GITHUB_ENV
         fi
 
-    - name: Upload to Release
-      if: env.CHECK_IMG_IS_OK == 'true' && env.CHECK_ZIP_IS_OK == 'true'
+    - name: Upload Diagnostic Release
+      if: env.FILES_FOUND == 'true'
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img
-          OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.zip
-        name: Unofficial OrangeFox for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
-        tag_name: ${{ github.run_id }}
+          ${{ github.workspace }}/artifacts/*
+        name: Diagnostic Build - ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
+        tag_name: diag-${{ github.run_id }}
+        
+        body: |
+          Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
+          Target: ${{ github.event.inputs.BUILD_TARGET }}
+          Note: This is a diagnostic build to find where the output files are hiding.
+
         body: |
           Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
           Device: [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
