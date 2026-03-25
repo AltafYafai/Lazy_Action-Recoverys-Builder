@@ -53,7 +53,10 @@ jobs:
       run: |
         cd ~/fox_12.1
         git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b fox12.1 device/xiaomi/sky
-
+    - name: Remove vendorsetup
+      run: |
+        rm -f ~/fox_12.1/device/xiaomi/sky/vendorsetup.sh
+    
     # ✅ Build
     - name: Build Recovery
       run: |
