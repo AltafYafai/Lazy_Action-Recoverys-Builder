@@ -33,12 +33,12 @@ jobs:
 
     - name: Clone your tree
       run: |
-        cd ~/OrangeFox_sync
+        cd $GITHUB_WORKSPACE/OrangeFox_sync
         git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b TWRP device/xiaomi/sky
 
     - name: Build
       run: |
-        cd ~/OrangeFox_sync
+        cd $GITHUB_WORKSPACE/OrangeFox_sync
         source build/envsetup.sh
         lunch twrp_sky-eng
         mka recoveryimage
