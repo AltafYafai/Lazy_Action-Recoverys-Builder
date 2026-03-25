@@ -25,20 +25,18 @@ jobs:
 
     - name: Sync OrangeFox
       run: |
-        mkdir ~/OrangeFox_sync
+        git clone https://gitlab.com/OrangeFox/sync.git ~/OrangeFox_sync
         cd ~/OrangeFox_sync
-        git clone https://gitlab.com/OrangeFox/sync.git
-        cd ~/OrangeFox_sync/sync/
         ./orangefox_sync.sh --branch 12.1 --path ~/fox_12.1
 
-    - name: Clone your tree
+    - name: Clone device tree
       run: |
-        cd $GITHUB_WORKSPACE/OrangeFox_sync
+        cd ~/fox_12.1
         git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b TWRP device/xiaomi/sky
 
-    - name: Build
+    - name: Build Recovery
       run: |
-        cd $GITHUB_WORKSPACE/OrangeFox_sync
+        cd ~/fox_12.1
         source build/envsetup.sh
         lunch twrp_sky-eng
         mka recoveryimage
@@ -47,4 +45,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: OrangeFox-sky
-        path: fox/out/target/product/sky/recovery.img
+        path: ~/fox_12.1/out/target/product/sky/recovery.img
