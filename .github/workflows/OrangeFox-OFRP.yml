@@ -27,9 +27,10 @@ jobs:
     # ✅ Setup ccache (10GB)
     - name: Setup ccache
       run: |
+        mkdir -p /tmp/ccache
         echo "USE_CCACHE=1" >> $GITHUB_ENV
         echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
-        echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+        echo "CCACHE_DIR=/tmp/ccache" >> $GITHUB_ENV
         ccache -M 10G
 
     # ✅ Cache ccache (persist between runs)
