@@ -33,7 +33,7 @@ jobs:
 
     - name: Clone your tree
       run: |
-        cd fox
+        cd ~/OrangeFox_sync
         git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b TWRP device/xiaomi/sky
 
     - name: Build
