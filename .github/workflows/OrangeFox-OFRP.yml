@@ -50,11 +50,9 @@ jobs:
         ./orangefox_sync.sh --branch 12.1 --path ~/fox_12.1
 
         cd ~/fox_12.1
+        rm -rf bootable/recovery
+        repo sync bootable/recovery -j1 --force-sync --no-clone-bundle --no-tags
         repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-
-    - name: Verify framework files
-      run: |
-         ls -l ~/fox_12.1/frameworks/base/services/core/xsd/vts/ || echo "Missing folder"
 
     # ✅ Device tree
     - name: Clone device tree
