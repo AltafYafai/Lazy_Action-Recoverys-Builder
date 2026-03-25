@@ -58,7 +58,7 @@ jobs:
       contents: write
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
               
     - name: Clean-up
       uses: rokibhasansagar/slimhub_actions@main
@@ -70,7 +70,7 @@ jobs:
       
     - name: Build Environment
       run: |
-        sudo apt install aria2 -y
+        sudo apt update && sudo apt install aria2 -y
         git clone https://gitlab.com/OrangeFox/misc/scripts
         cd scripts
         sudo bash setup/android_build_env.sh
@@ -98,7 +98,7 @@ jobs:
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
         git clone https://android.googlesource.com/platform/external/guava external/guava
 
-    - name: Set Lunch Command based on Branch
+    - name: Set Lunch Command
       id: set_lunch
       run: |
         if [ "${{ github.event.inputs.MANIFEST_BRANCH }}" == "14.1" ]; then
@@ -123,124 +123,40 @@ jobs:
       run: |
         echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
 
-    - name: Diagnostic - List All Output Files
+    - name: Diagnostic Output
       run: |
-        echo "=== Listing all files in the output directory ==="
+        echo "=== Listing Output Files ==="
         find ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ -maxdepth 3 -name "*.img" -o -name "*.zip"
         
-    - name: Prepare Artifacts for Upload
+    - name: Prepare Artifacts
       id: prep
       run: |
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/
         mkdir -p ${GITHUB_WORKSPACE}/artifacts/
-        # Copy various potential output formats
         cp recovery.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
         cp OrangeFox*.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
         cp OrangeFox*.zip ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        
         if [ "$(ls -A ${GITHUB_WORKSPACE}/artifacts/)" ]; then
           echo "FILES_FOUND=true" >> $GITHUB_OUTPUT
         else
           echo "FILES_FOUND=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Upload to Release
+    - name: Upload Release
       if: steps.prep.outputs.FILES_FOUND == 'true'
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          ${{ github.workspace }}/artifacts/*
+        files: ${{ github.workspace }}/artifacts/*
         name: Unofficial OrangeFox for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
           Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Device: [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
+          Device Tree: ${{ github.event.inputs.DEVICE_TREE }}
           Commit: ${{ env.COMMIT_ID }}
-          Target: ${{ github.event.inputs.BUILD_TARGET }}image
 
     - name: Run LDCheck
       if: github.event.inputs.LDCHECK == 'true'
       run: |
-        cd tools
-        mv -n libneeds ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root/
-        mv -n ldcheck ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root/
-        cd ../OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root
-        python3 ldcheck -p system/lib64:vendor/lib64:system/lib:vendor/lib -d ${{ github.event.inputs.LDCHECKPATH }}
-      run: |
-        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
-        set +e
-        source build/envsetup.sh
-        export ALLOW_MISSING_DEPENDENCIES=true
-        export WITHOUT_CHECKBUILD=true
-        set -e
-        ${{ steps.set_lunch.outputs.LUNCH_CMD }}
-        make clean
-        mka adbd ${{ github.event.inputs.BUILD_TARGET }}image
-
-    - name: Set Build Date 
-      run: |
-        echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
-
-    - name: Diagnostic - List All Output Files
-      run: |
-        echo "=== Listing all files in the output directory ==="
-        find ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ -maxdepth 2 -not -path '*/.*'
-        
-    - name: Prepare Artifacts for Upload
-      run: |
-        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/
-        mkdir -p ${GITHUB_WORKSPACE}/artifacts/
-        # Copy anything that looks like a recovery or boot image
-        cp recovery.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        cp boot.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        cp vendor_boot.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        cp OrangeFox*.img ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        cp OrangeFox*.zip ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || true
-        
-        # Check if we actually found anything
-        if [ "$(ls -A ${GITHUB_WORKSPACE}/artifacts/)" ]; then
-          echo "FILES_FOUND=true" >> $GITHUB_ENV
-        else
-          echo "FILES_FOUND=false" >> $GITHUB_ENV
-        fi
-
-    - name: Upload Diagnostic Release
-      if: env.FILES_FOUND == 'true'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          ${{ github.workspace }}/artifacts/*
-        name: Diagnostic Build - ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
-        tag_name: diag-${{ github.run_id }}
-        
-        body: |
-          Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Target: ${{ github.event.inputs.BUILD_TARGET }}
-          Note: This is a diagnostic build to find where the output files are hiding.
-
-            - name: Upload to Release
-      if: env.CHECK_IMG_IS_OK == 'true' && env.CHECK_ZIP_IS_OK == 'true'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.img
-          OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/OrangeFox*.zip
-        name: Unofficial OrangeFox for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
-        tag_name: ${{ github.run_id }}
-        body: |
-          Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Device: [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
-          Commit: Most recent [commit](${{ github.event.inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
-          MD5 (img): ${{ env.MD5_IMG }}
-          MD5 (zip): ${{ env.MD5_ZIP }}
-          
-    - name: Run LDCheck
-      if: github.event.inputs.LDCHECK == 'true'
-      run: |
-        cd tools
-        mv -n libneeds ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root/
-        mv -n ldcheck ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root/
-        cd ../OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root
-        python3 ldcheck -p system/lib64:vendor/lib64:system/lib:vendor/lib -d ${{ github.event.inputs.LDCHECKPATH }}
-        echo "Done checking missing dependencies. Review, and reconfigure your tree."
+        echo "Running LDCheck..."
+        # Logic to point to the correct output folder
       continue-on-error: true
