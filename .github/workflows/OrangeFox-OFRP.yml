@@ -16,7 +16,7 @@ jobs:
         lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 \
         libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev ccache
 
-    # ✅ Setup repo tool
+    # Setup repo tool
     - name: Setup repo
       run: |
         mkdir -p ~/bin
@@ -24,25 +24,26 @@ jobs:
         chmod a+x ~/bin/repo
         echo "$HOME/bin" >> $GITHUB_PATH
 
-    # ✅ Setup ccache (10GB)
+    # ✅ Setup ccache (FIXED)
     - name: Setup ccache
       run: |
         mkdir -p /tmp/ccache
+        chmod -R 777 /tmp/ccache
         echo "USE_CCACHE=1" >> $GITHUB_ENV
         echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
         echo "CCACHE_DIR=/tmp/ccache" >> $GITHUB_ENV
         ccache -M 10G
 
-    # ✅ Cache ccache (persist between runs)
+    # ✅ Cache (FIXED PATH)
     - name: Restore ccache
       uses: actions/cache@v4
       with:
-        path: ~/.ccache
+        path: /tmp/ccache
         key: ${{ runner.os }}-ccache-fox
         restore-keys: |
           ${{ runner.os }}-ccache-fox
 
-    # ✅ Sync source
+    # Sync source
     - name: Sync OrangeFox
       run: |
         git clone https://gitlab.com/OrangeFox/sync.git ~/OrangeFox_sync
@@ -55,30 +56,38 @@ jobs:
         repo sync bootable/recovery -j1 --force-sync --no-clone-bundle --no-tags
         repo sync -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-    # ✅ Device tree
+    # Device tree
     - name: Clone device tree
       run: |
         cd ~/fox_12.1
         git clone https://github.com/AltafYafai/device_xiaomi_sky-recovery.git -b fox12.1 device/xiaomi/sky
+
     - name: Remove vendorsetup
       run: |
         rm -f ~/fox_12.1/device/xiaomi/sky/vendorsetup.sh
-    
-    # ✅ Build
+
+    # ✅ Build (FIXED)
     - name: Build Recovery
       run: |
         set -x
         cd ~/fox_12.1
+
         export USE_CCACHE=1
         export CCACHE_EXEC=$(which ccache)
-        export CCACHE_DIR=$HOME/.ccache
+        export CCACHE_DIR=/tmp/ccache
+
+        mkdir -p /tmp/ccache
+        chmod -R 777 /tmp/ccache
+
         ccache -z
+
         source build/envsetup.sh
         lunch twrp_sky-eng
         mka recoveryimage
+
         ccache -s
 
-    # ✅ Upload output
+    # Upload
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
