@@ -26,7 +26,7 @@ jobs:
     - name: Sync OrangeFox
       run: |
         mkdir fox && cd fox
-        repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_12.0 --depth=1
+        repo init -u https://gitlab.com/OrangeFox/sync.git -b fox_12.1 --depth=1
         repo sync -j4 --force-sync --no-tags --no-clone-bundle
     - name: Clone your tree
       run: |
