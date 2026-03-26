@@ -82,7 +82,7 @@ jobs:
         ccache -z
 
         source build/envsetup.sh
-        lunch twrp_sky-eng
+        lunch fox_sky-eng
         mka recoveryimage
 
         ccache -s
